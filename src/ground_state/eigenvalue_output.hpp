@@ -119,7 +119,7 @@ public:
 			
 			if(self.nkpoints_ > 1) tfm::format(out, "  kpt = (%5.2f,%5.2f,%5.2f)", kpoint[0], kpoint[1], kpoint[2]);
 			if(self.nspin_    > 1) tfm::format(out, "  spin = %s", spin_string(self.all_spin_index[ieig]));
-			tfm::format(out, "  st = %4d  occ = %4.3f  evalue = %18.12f  res = %5.0e\n",
+			tfm::format(out, "  st = %4d  occ = %4.12f  evalue = %18.12f  res = %5.0e\n",
 									self.all_states_index[ieig] + 1, self.all_occupations[ieig], real(self.all_eigenvalues[ieig]), fabs(self.all_normres[ieig]));
 		}
 
@@ -154,7 +154,7 @@ public:
 					if(self.nkpoints_ > 1 or self.nspin_    > 1) tfm::format(out, "\n");
 				}
 				
-				tfm::format(out, "    st = %4d  occ = %4.3f  evalue = %18.12f Ha (%18.12f eV)  res = %5.0e\n",
+				tfm::format(out, "    st = %4d  occ = %4.12f  evalue = %18.12f Ha (%18.12f eV)  res = %5.0e\n",
 										self.all_states_index[ieig] + 1, self.all_occupations[ieig], real(self.all_eigenvalues[ieig]), real(self.all_eigenvalues[ieig])*27.211383, fabs(self.all_normres[ieig]));
 			}
 			
