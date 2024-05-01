@@ -98,9 +98,15 @@ public:
 		return operations::integral(electrons_.density());
 	}
 
+    auto density_q(inq::vector3<int> q) const {
+        auto density_fs = operations::transform::to_fourier(basis::complex_field(electrons_.density()));
+        return density_fs.cubic()[q[0]][q[1]][q[2]];
+    }
+
   auto current() const {
     return ions_.cell().metric().to_cartesian(observables::current(ions_, electrons_, ham_));
   }
+
 	auto projected_occupation(const systems::electrons & gs) {
 		auto calc = [] (auto occ, auto v) {
 			return occ*norm(v);
