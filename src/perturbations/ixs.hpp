@@ -21,35 +21,73 @@ namespace perturbations {
 class ixs : public perturbations::none {
 
 public:
-	ixs(quantity<magnitude::energy> amplitude, inq::vector3<double, covariant> q, quantity<magnitude::time> tdelay, quantity<magnitude::time> twidth):
+	ixs(quantity<magnitude::energy> amplitude, vector3<int> q, quantity<magnitude::time> tdelay, quantity<magnitude::time> twidth, std::string envtype="exp"):
 		amplitude_(amplitude.in_atomic_units()),
         q_(q),
 		tdelay_(tdelay.in_atomic_units()),
-		twidth_(twidth.in_atomic_units())
+		twidth_(twidth.in_atomic_units()),
+        envtype_(envtype)
 	{}
 
 	auto has_potential() const {
 		return true;
 	}
+
+    auto envelope(const double time) const {
+        return amplitude_/sqrt(2.0*M_PI) * exp( -0.5*pow((time-tdelay_)/(twidth_),2) );
+    }
 	
 	template<typename PotentialType>
 	void potential(const double time, PotentialType & potential) const {
-		auto Vixs = [q = q_, tdelay = tdelay_, twidth = twidth_, amplitude = amplitude_, t = time](inq::vector3<double, contravariant> rr) {
-		    return amplitude/sqrt(2.0*M_PI)/twidth * exp( pow((t-tdelay)/(2.0*twidth),2) ) * complex(cos(q.dot(rr)), sin(q.dot(rr)));
-		};
 
-		gpu::run(potential.basis().local_sizes()[2], potential.basis().local_sizes()[1], potential.basis().local_sizes()[0],
-						 [point_op = potential.basis().point_op(), vk = begin(potential.cubic()), Vixs] GPU_LAMBDA (auto iz, auto iy, auto ix) {
-							 auto rr = point_op.rvector(ix, iy, iz);
-							 vk[ix][iy][iz] += Vixs(rr);
-						 });
+        // something like this may be needed in parallel
+//        auto qix = parallel::global_index(qi[0]);
+//        auto qiy = parallel::global_index(qi[1]);
+//        auto qiz = parallel::global_index(qi[2]);
+
+        // get the G vector corresponding to the q indices
+        vector3<double, covariant> qcov = potential.basis().reciprocal().point_op().gvector(q_[0], q_[1], q_[2]);
+
+
+        if (envtype_ == "cos") {
+            gpu::run(potential.basis().local_sizes()[2], potential.basis().local_sizes()[1], potential.basis().local_sizes()[0],
+                         [point_op = potential.basis().point_op(), vk = begin(potential.cubic()), env=envelope(time), q=qcov] GPU_LAMBDA (auto iz, auto iy, auto ix) {
+                             auto rr = point_op.rvector(ix, iy, iz);
+                             vk[ix][iy][iz] += env * cos(dot(q,rr));
+                        });
+        }
+
+        else if (envtype_ == "sin") {
+            gpu::run(potential.basis().local_sizes()[2], potential.basis().local_sizes()[1], potential.basis().local_sizes()[0],
+                         [point_op = potential.basis().point_op(), vk = begin(potential.cubic()), env=envelope(time), q=qcov] GPU_LAMBDA (auto iz, auto iy, auto ix) {
+                             auto rr = point_op.rvector(ix, iy, iz);
+                             vk[ix][iy][iz] += env * sin(dot(q,rr));
+                        });
+        }
+
+         // complex potentials appear unsupported currently
+/*        else if (envtype_ == "exp") {
+            gpu::run(potential.basis().local_sizes()[2], potential.basis().local_sizes()[1], potential.basis().local_sizes()[0],
+                         [point_op = potential.basis().point_op(), vk = begin(potential.cubic()), env=envelope(time), q=qcov] GPU_LAMBDA (auto iz, auto iy, auto ix) {
+                             auto rr = point_op.rvector(ix, iy, iz);
+                             vk[ix][iy][iz] += env * complex(cos(dot(q,rr)), sin(dot(q,rr)));
+                         });
+        }
+*/
+
+        else {
+            throw std::runtime_error("INQ error: Invalid IXS envelope type");
+        }
+
+
 	}
 
 private:
 	double amplitude_;
 	double tdelay_;
 	double twidth_;
-    inq::vector3<double, covariant> q_;
+    vector3<int> q_;
+    std::string envtype_;
 };
 
 }
