@@ -104,7 +104,7 @@ public:
     auto density_q(vector3<int> q) const {
         // returns q fourier component of density, scaled by cell volume
         auto density_fs = operations::transform::to_fourier(basis::complex_field(electrons_.density()));
-        return density_fs.cubic()[q[0]][q[1]][q[2]] / density_fs.basis().size() * ions_.cell().volume();
+        return density_fs.cubic()[q[0]][q[1]][q[2]] / (1.0*density_fs.basis().size()) * ions_.cell().volume();
     }
 
 
